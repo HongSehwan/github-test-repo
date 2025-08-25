@@ -17,6 +17,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set S3 Bucket Suffix
+        id: bucket-suffix
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "suffix=admin-frontend-prd" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "suffix=admin-frontend-dev" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=admin-frontend-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Display Target Bucket
+        run: |
+          echo "🎯 배포 대상 S3 버킷: ${{ steps.bucket-suffix.outputs.suffix }}"
+          echo "🌿 현재 브랜치: ${{ github.ref_name }}"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -26,13 +42,30 @@ jobs:
 
       - name: Sync Static Files to S3
         run: |
-          aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }} --delete
+          aws s3 sync . s3://${{ steps.bucket-suffix.outputs.suffix }} --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude "README.md" \
+            --exclude "*.md"
 
       - name: Invalidate CloudFront Cache
         run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            DISTRIBUTION_ID="${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_PRD }}"
+          else
+            DISTRIBUTION_ID="${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_DEV }}"
+          fi
+
+          if [ -n "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id $DISTRIBUTION_ID \
+              --paths "/*"
+            echo "✅ CloudFront 캐시 무효화 완료: $DISTRIBUTION_ID"
+          else
+            echo "⚠️  CloudFront 배포 ID가 설정되지 않았습니다."
+          fi
 
       - name: Deployment Complete
-        run: echo "🎉 Static 파일 배포 및 캐시 무효화 완료!"
+        run: |
+          echo "🎉 ${{ github.ref_name }} 브랜치 배포 완료!"
+          echo "📦 S3 버킷: ${{ steps.bucket-suffix.outputs.suffix }}"
