@@ -15,7 +15,6 @@ jobs:
 
     env:
       ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prd' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
-      AWS_REGION: ap-northeast-2
       S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
 
     steps:
