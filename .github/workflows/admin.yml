@@ -15,7 +15,7 @@ jobs:
 
     env:
       ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prd' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
-      S3_BUCKET: ${{ var.AWS_S3_BUCKET }}
+      S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
 
     steps:
       - name: Checkout Repository
@@ -48,9 +48,9 @@ jobs:
       - name: Invalidate CloudFront Cache
         run: |
           if [ "${{ env.ENVIRONMENT }}" = "prd" ]; then
-            DISTRIBUTION_ID="${{ var.CLOUDFRONT_DISTRIBUTION_ID }}"
+            DISTRIBUTION_ID="${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
           else
-            DISTRIBUTION_ID="${{ var.CLOUDFRONT_DISTRIBUTION_ID }}"
+            DISTRIBUTION_ID="${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
           fi
 
           if [ -n "$DISTRIBUTION_ID" ]; then
