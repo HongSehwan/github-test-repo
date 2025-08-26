@@ -15,6 +15,7 @@ jobs:
     env:
       ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prd' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
       S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ap-northeast-2
 
     steps:
       - name: Checkout Repository
@@ -30,11 +31,11 @@ jobs:
           fi
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Sync Static Files to S3
         run: |
