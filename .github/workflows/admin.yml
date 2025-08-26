@@ -10,6 +10,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   deploy:
+    environment: ${{ github.ref == 'refs/heads/main' && 'prd' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
     runs-on: ubuntu-latest
 
     env:
