@@ -13,25 +13,23 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'prd' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
+      AWS_REGION: ap-northeast-2
+      S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set S3 Bucket Suffix
-        id: bucket-suffix
+      - name: Set S3 Deployment Suffix
+        id: s3-suffix
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "suffix=admin-frontend-prd" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            echo "suffix=admin-frontend-dev" >> $GITHUB_OUTPUT
+          if [ "${{ env.ENVIRONMENT }}" = "prd" ]; then
+            echo "DEPLOY_SUFFIX=admin-frontend-prd" >> $GITHUB_ENV
           else
-            echo "suffix=admin-frontend-dev" >> $GITHUB_OUTPUT
+            echo "DEPLOY_SUFFIX=admin-frontend-dev" >> $GITHUB_ENV
           fi
-
-      - name: Display Target Bucket
-        run: |
-          echo "🎯 배포 대상 S3 버킷: ${{ steps.bucket-suffix.outputs.suffix }}"
-          echo "🌿 현재 브랜치: ${{ github.ref_name }}"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,7 +40,7 @@ jobs:
 
       - name: Sync Static Files to S3
         run: |
-          aws s3 sync . s3://${{ steps.bucket-suffix.outputs.suffix }} --delete \
+          aws s3 sync . s3://$S3_BUCKET/$DEPLOY_SUFFIX --delete \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "README.md" \
@@ -50,7 +48,7 @@ jobs:
 
       - name: Invalidate CloudFront Cache
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ env.ENVIRONMENT }}" = "prd" ]; then
             DISTRIBUTION_ID="${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_PRD }}"
           else
             DISTRIBUTION_ID="${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_DEV }}"
@@ -68,4 +66,4 @@ jobs:
       - name: Deployment Complete
         run: |
           echo "🎉 ${{ github.ref_name }} 브랜치 배포 완료!"
-          echo "📦 S3 버킷: ${{ steps.bucket-suffix.outputs.suffix }}"
+          echo "📦 S3 경로: $S3_BUCKET/$DEPLOY_SUFFIX"
